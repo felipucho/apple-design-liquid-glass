@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Liquid Glass demo</title>
+    <meta name="description" content="iOS 26 Liquid Glass on the web: stretchy glass buttons and a glass lens segmented control, no dependencies." />
+    <script>
+      // Before the first paint: the saved theme (or the system's), so there is no white flash.
+      try {
+        const saved = localStorage.getItem('theme')
+        const dark = saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      } catch {}
+    </script>
+    <link rel="stylesheet" href="glass.css" />
+  </head>
+  <body>
+    <main class="glass-card">
+      <header>
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3c3 4 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-7 6-11z" />
+          </svg>
+        </span>
+        <h1>Liquid Glass</h1>
+        <p>Press and drag the buttons. Pick up the glass in the switch below and slide it.</p>
+      </header>
+
+      <form id="sign-in">
+        <label>
+          Email
+          <input type="email" name="email" autocomplete="email" required />
+        </label>
+        <label>
+          Password
+          <input type="password" name="password" autocomplete="current-password" minlength="8" required />
+        </label>
+        <button type="submit" class="glass-button glass-button--primary">Sign in</button>
+      </form>
+
+      <button type="button" class="glass-button">Create an account</button>
+
+      <footer>
+        <fieldset class="glass-lens" id="theme">
+          <legend class="sr-only">Theme</legend>
+          <label title="Light">
+            <input type="radio" name="theme" value="light" />
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+            </svg>
+            <span class="sr-only">Light</span>
+          </label>
+          <label title="Dark">
+            <input type="radio" name="theme" value="dark" />
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z" />
+            </svg>
+            <span class="sr-only">Dark</span>
+          </label>
+          <label title="Automatic">
+            <input type="radio" name="theme" value="auto" />
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="8.5" />
+              <path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" />
+            </svg>
+            <span class="sr-only">Automatic</span>
+          </label>
+        </fieldset>
+        <span>Based on Emil Kowalski's <code>apple-design</code> skill.</span>
+      </footer>
+    </main>
+
+    <script type="module">
+      import { enableGlassButtons, createGlassLens, enableFieldMessages } from './glass.js'
+
+      enableGlassButtons('.glass-button')
+      enableFieldMessages('.glass-card')
+
+      const system = matchMedia('(prefers-color-scheme: dark)')
+      const read = () => {
+        try {
+          return localStorage.getItem('theme') ?? 'auto'
+        } catch {
+          return 'auto'
+        }
+      }
+      const apply = (choice) => {
+        const dark = choice === 'dark' || (choice === 'auto' && system.matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      }
+      system.addEventListener('change', () => apply(read()))
+
+      const box = document.getElementById('theme')
+      const radios = [...box.querySelectorAll('input')]
+      radios.find((r) => r.value === read()).checked = true
+      createGlassLens(box, (i) => {
+        const choice = radios[i].value
+        try {
+          localStorage.setItem('theme', choice)
+        } catch {}
+        apply(choice)
+      })
+
+      // Demo only: nothing is sent anywhere.
+      document.getElementById('sign-in').addEventListener('submit', (e) => {
+        e.preventDefault()
+        e.submitter.textContent = 'Signed in'
+      })
+    </script>
+  </body>
+</html>

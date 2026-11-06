@@ -1,0 +1,392 @@
+/*
+ * Liquid Glass demo styles. glass.js writes the motion (translate, scale, --press, --x, --y)
+ * and the state attributes (data-pressed, data-dragging, data-traveling, data-message).
+ * The reasons behind each value are in skills/apple-design-liquid-glass/LIQUID-GLASS.md.
+ */
+
+:root {
+  color-scheme: light;
+  --bg: #f2f2f7;
+  --blob-1: rgb(10 132 255 / 0.34);
+  --blob-2: rgb(94 92 230 / 0.26);
+  --blob-3: rgb(100 210 255 / 0.3);
+  --glass: rgb(255 255 255 / 0.62);
+  --glass-border: rgb(255 255 255 / 0.75);
+  --glass-shine: rgb(255 255 255 / 0.9);
+  --glass-button: rgb(255 255 255 / 0.55);
+  --field: #fff;
+  --line: rgb(60 60 67 / 0.18);
+  --text-1: #1d1d1f;
+  --text-2: rgb(60 60 67 / 0.75);
+  --accent: #0071e3;
+  --accent-rgb: 0 113 227;
+  --accent-hover: #0062c4;
+  --accent-text: #0066cc;
+  --on-accent: #fff;
+  --ring: rgb(0 113 227 / 0.28);
+  --hover-soft: rgb(0 0 0 / 0.05);
+  --shadow: rgb(15 23 42 / 0.16);
+  --shadow-soft: rgb(15 23 42 / 0.06);
+  --error: #a1201a;
+  --highlight: rgb(255 255 255 / 0.6);
+  --edge-light: #fff;
+  --inner-glow: rgb(255 255 255 / 0.35);
+  --lens-rest: rgb(0 0 0 / 0.07);
+  /* The rim of a piece of glass: light on top, a little below, a hairline around. Same in light and dark. */
+  --glass-rim: inset 0 1.5px 1px rgb(255 255 255 / 0.85), inset 0 -1.5px 1px rgb(255 255 255 / 0.5),
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.4);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #000;
+  --blob-1: rgb(10 132 255 / 0.3);
+  --blob-2: rgb(94 92 230 / 0.26);
+  --blob-3: rgb(100 210 255 / 0.12);
+  --glass: rgb(28 28 30 / 0.62);
+  --glass-border: rgb(255 255 255 / 0.1);
+  --glass-shine: rgb(255 255 255 / 0.12);
+  --glass-button: rgb(255 255 255 / 0.1);
+  --field: #232326;
+  --line: rgb(235 235 245 / 0.16);
+  --text-1: #f5f5f7;
+  --text-2: rgb(235 235 245 / 0.68);
+  --accent-text: #4da3ff;
+  --ring: rgb(77 163 255 / 0.4);
+  --hover-soft: rgb(255 255 255 / 0.07);
+  --shadow: rgb(0 0 0 / 0.6);
+  --shadow-soft: rgb(0 0 0 / 0.3);
+  --error: #ff8a80;
+  --highlight: rgb(255 255 255 / 0.22);
+  --edge-light: rgb(255 255 255 / 0.55);
+  --inner-glow: rgb(255 255 255 / 0.06);
+  --lens-rest: rgb(255 255 255 / 0.13);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  background:
+    radial-gradient(42rem 32rem at 10% 5%, var(--blob-1), transparent 70%),
+    radial-gradient(38rem 30rem at 95% 20%, var(--blob-2), transparent 70%),
+    radial-gradient(46rem 34rem at 50% 110%, var(--blob-3), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
+}
+body {
+  margin: 0;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem 1rem;
+  font: 100%/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--text-1);
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ---------- Glass card: materializes on entry ---------- */
+
+.glass-card {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 24rem);
+  padding: 2rem 1.75rem 1.25rem;
+  display: grid;
+  gap: 1.25rem;
+  font-size: 0.945rem;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  box-shadow: inset 0 1px 0 var(--glass-shine), 0 30px 60px -20px var(--shadow), 0 2px 8px var(--shadow-soft);
+  transition:
+    opacity 500ms var(--ease-out),
+    transform 750ms var(--ease-out),
+    -webkit-backdrop-filter 750ms var(--ease-out),
+    backdrop-filter 750ms var(--ease-out);
+}
+/* The glass forms (blur grows from 0) while it rises and scales in. */
+@starting-style {
+  .glass-card {
+    opacity: 0;
+    transform: scale(0.95) translateY(16px);
+    -webkit-backdrop-filter: blur(0) saturate(100%);
+    backdrop-filter: blur(0) saturate(100%);
+  }
+}
+/* Then the content, top to bottom. Keyframes (not transitions) so they don't fight the buttons' own motion. */
+@keyframes glass-content-in {
+  from { opacity: 0; transform: translateY(8px); filter: blur(3px); }
+}
+.glass-card > * { animation: glass-content-in 600ms var(--ease-out) backwards; }
+.glass-card > :nth-child(1) { animation-delay: 140ms; }
+.glass-card > :nth-child(2) { animation-delay: 200ms; }
+.glass-card > :nth-child(3) { animation-delay: 260ms; }
+.glass-card > :nth-child(n + 4) { animation-delay: 320ms; }
+
+/* Light that follows the pointer: an edge that lights up nearby and a soft glow inside. Subtle on purpose. */
+.glass-card::before, .glass-card::after {
+  content: '';
+  position: absolute;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: opacity 350ms ease;
+}
+.glass-card::before {
+  inset: -1px;
+  padding: 1px;
+  background: radial-gradient(16rem circle at var(--x, 50%) var(--y, 0%), var(--edge-light), transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0.55;
+}
+.glass-card::after {
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(22rem circle at var(--x, 50%) var(--y, 0%), var(--inner-glow), transparent 70%);
+  opacity: 0;
+}
+
+.glass-card header { display: grid; justify-items: center; gap: 0.4rem; text-align: center; }
+.glass-card h1 { margin: 0; font-size: 1.6rem; line-height: 1.1; letter-spacing: -0.025em; font-weight: 700; }
+.glass-card p { margin: 0; color: var(--text-2); }
+.mark {
+  display: grid; place-items: center;
+  width: 3.5rem; height: 3.5rem; margin-bottom: 0.4rem;
+  border-radius: 16px;
+  color: var(--on-accent);
+  background: linear-gradient(145deg, #3d9bff, var(--accent) 55%, #5e5ce6);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 8px 20px -6px rgb(var(--accent-rgb) / 0.55);
+}
+.glass-card form { display: grid; gap: 0.9rem; }
+.glass-card footer { display: grid; justify-items: center; gap: 0.75rem; font-size: 0.85rem; color: var(--text-2); text-align: center; }
+
+/* ---------- Fields: solid on glass (glass over glass doesn't read) ---------- */
+
+.glass-card label:not(.glass-lens label) {
+  display: grid; gap: 0.4rem;
+  font-size: 0.8rem; font-weight: 600; letter-spacing: 0.01em;
+  color: var(--text-2);
+}
+.glass-card input:not([type='radio']) {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.85rem;
+  font: inherit; font-size: 0.945rem; font-weight: 400; letter-spacing: 0;
+  color: var(--text-1);
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.glass-card input:not([type='radio']):focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--ring);
+}
+/* Inline field message instead of the browser bubble (enableFieldMessages in glass.js). */
+.glass-card label[data-message] input {
+  border-color: color-mix(in srgb, var(--error) 70%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--error) 16%, transparent);
+}
+.glass-card label[data-message]::after {
+  content: attr(data-message);
+  margin-top: -0.1rem;
+  padding-inline: 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--error);
+  animation: field-message-in 280ms var(--ease-out);
+}
+.glass-card label[data-shake] input { animation: field-shake 360ms ease-out; }
+@keyframes field-message-in { from { opacity: 0; transform: translateY(-4px); } }
+/* Like a wrong passcode on iOS: a few short swings that die out. */
+@keyframes field-shake {
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-2.5px); }
+  80% { transform: translateX(1px); }
+}
+
+/* ---------- Glass buttons ---------- */
+
+.glass-button {
+  position: relative;
+  isolation: isolate;
+  justify-self: center;
+  padding: 0.45rem 0.85rem;
+  font: inherit;
+  font-weight: 500;
+  color: var(--accent-text);
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  /* Sideways drags belong to the button (to stretch it); vertical ones still scroll the page. */
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+.glass-button:focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+/* Highlight: light on the glass, under the pointer. --press is driven by the spring frame by frame. */
+.glass-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(7rem circle at var(--x, 50%) var(--y, 0%), var(--highlight), transparent 70%);
+  opacity: max(calc(var(--press, 0) * 0.6), var(--hover, 0));
+  transition: opacity 250ms ease;
+}
+.glass-button[data-stretching]::after { transition: none; }
+.glass-button--primary {
+  justify-self: stretch;
+  min-height: 2.75rem;
+  margin-top: 0.25rem;
+  font-weight: 600;
+  color: var(--on-accent);
+  background-color: var(--accent);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 55%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), inset 0 -1px 1px rgb(0 0 0 / 0.12),
+    0 8px 20px -8px rgb(var(--accent-rgb) / 0.75);
+}
+.glass-button--primary[data-pressed] {
+  background-color: var(--accent-hover);
+}
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover::before { opacity: 0.75; }
+  .glass-card:hover::after { opacity: 0.45; }
+  .glass-button:hover { --hover: 0.35; }
+  .glass-button:not(.glass-button--primary):hover {
+    background-color: var(--glass-button);
+    box-shadow: inset 0 1px 0 var(--glass-shine), 0 0 0 0.5px var(--line), 0 6px 16px -8px var(--shadow);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    backdrop-filter: blur(12px) saturate(180%);
+  }
+  .glass-button--primary:hover { background-color: var(--accent-hover); }
+}
+/* Pressed looks like the lens: a glass capsule with the rim light. Also on touch, where there is no hover. */
+.glass-button[data-pressed]:not(.glass-button--primary) {
+  background-color: var(--glass-button);
+  box-shadow: var(--glass-rim), 0 0 0 0.5px var(--line), 0 6px 16px -8px var(--shadow);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+}
+
+/* ---------- Rainbow rim: a 1px ring, color only at two opposite corners. Shared by the lens and the buttons. ---------- */
+
+.glass-lens__glass::before, .glass-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from 300deg,
+    rgb(255 120 190 / 0), rgb(255 120 190 / 0.5) 6%, rgb(255 210 120 / 0.4) 11%, rgb(255 255 255 / 0) 17%,
+    rgb(255 255 255 / 0) 50%, rgb(110 200 255 / 0.5) 56%, rgb(170 130 255 / 0.4) 61%, rgb(170 130 255 / 0) 67%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.glass-lens[data-dragging] .glass-lens__glass::before,
+.glass-lens[data-traveling] .glass-lens__glass::before { opacity: 0.45; }
+/* On buttons it follows the same spring as the inflation, with no transition of its own. */
+.glass-button::before { z-index: -1; opacity: calc(var(--press, 0) * 0.45); transition: none; }
+
+/* ---------- Glass lens segmented control ---------- */
+
+.glass-lens {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex; gap: 2px;
+  margin: 0; padding: 3px; min-inline-size: auto;
+  border: 0; border-radius: 999px;
+  background: var(--hover-soft);
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* At rest: a translucent pill behind the selected option. */
+.glass-lens__glass {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 2.75rem; height: 1.75rem;
+  border-radius: 999px;
+  pointer-events: none;
+  background: var(--lens-rest);
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+/* Picked up or traveling: clear glass (no frost) above the icons, with the rim light. */
+.glass-lens[data-dragging] .glass-lens__glass,
+.glass-lens[data-traveling] .glass-lens__glass {
+  z-index: 3;
+  background: rgb(255 255 255 / 0.04);
+  -webkit-backdrop-filter: saturate(160%) brightness(1.04);
+  backdrop-filter: saturate(160%) brightness(1.04);
+  box-shadow: var(--glass-rim), 0 0 0 0.5px var(--line), 0 6px 16px -6px var(--shadow);
+}
+/*
+ * The icons you see are two copies that ignore the pointer (the real controls are the radio labels underneath):
+ * - __icons: plain, with a hole the exact shape of the glass;
+ * - __tint: accent colored, only inside the glass, bent by the lens.
+ * So nothing is ever seen twice.
+ */
+.glass-lens__icons, .glass-lens__tint {
+  position: absolute;
+  display: inline-flex;
+  gap: 2px;
+  pointer-events: none;
+}
+/* Solid color plus opacity on the whole icon: a translucent color renders stroke/fill overlaps in two tones. */
+.glass-lens__icons { z-index: 1; color: var(--text-1); }
+.glass-lens__icons svg { opacity: 0.7; }
+.glass-lens__tint { z-index: 2; color: var(--accent-text); }
+/* The lens magnifies strokes past the icon's box: without this the svg clips them. */
+.glass-lens__tint svg { overflow: visible; }
+.glass-lens__icons > span, .glass-lens__tint > span {
+  display: grid; place-items: center;
+  width: 2.75rem; height: 1.75rem;
+}
+.glass-lens label {
+  position: relative;
+  z-index: 1;
+  display: grid; place-items: center;
+  width: 2.75rem; height: 1.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.glass-lens label svg { visibility: hidden; }
+.glass-lens input {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; margin: 0;
+  opacity: 0; cursor: pointer;
+}
+.glass-lens label:has(input:focus-visible) { outline: 3px solid var(--ring); outline-offset: 1px; }
+
+/* ---------- Accessibility ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-card { transition: opacity 200ms ease; }
+  @starting-style { .glass-card { transform: none; } }
+  .glass-card > *, .glass-card label[data-shake] input { animation: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-card { background: var(--field); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-contrast: more) {
+  .glass-card { background: var(--field); -webkit-backdrop-filter: none; backdrop-filter: none; border-color: var(--text-2); }
+  .glass-card input:not([type='radio']) { border-color: var(--text-2); }
+}
