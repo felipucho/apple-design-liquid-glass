@@ -29,6 +29,9 @@ Emil's skill covers Apple's motion and design principles: springs, interruptibil
 | Arrival | Glass surfaces materialize (blur grows as they rise), then their content staggers in. |
 | First paint | The theme applies before the first paint: no white flash, no "Loading…" text. |
 | Form errors | An inline message under the field with a tiny iOS-style shake, instead of the browser bubble. |
+| Switches | iOS 26 size: a 63 × 28pt track with a 37 × 24pt pill thumb, not the old 51 × 31 with a round one. The pressed thumb is a small lens. |
+| Settings lists | Capsule cards 20pt from the edges, 52pt rows, the footer explains the consequence. |
+| Open menus | One blurred glass panel that grows out of its control, a checkmark as the only selection mark, no separators. |
 
 The rules with their numbers are in [SKILL.md § 18](./skills/apple-design-liquid-glass/SKILL.md#18-liquid-glass--glass-you-can-touch). The full recipes, with the mistake behind each rule, are in [LIQUID-GLASS.md](./skills/apple-design-liquid-glass/LIQUID-GLASS.md).
 

@@ -1,6 +1,6 @@
 ---
 name: apple-design-liquid-glass
-description: Apple's approach to interface design and fluid, physical motion, translated for the web, plus hands-on rules for iOS 26 Liquid Glass. Use when building or reviewing gesture-driven UI, spring animations, drag/swipe/sheet interactions, momentum and interruptible transitions, translucent materials and depth, typography (optical sizing, tracking, leading), reduced-motion, or the design foundations (feedback, spatial consistency, restraint) behind Apple-style interfaces. Also use for Liquid Glass on the web: glass buttons that inflate and stretch toward the finger, a glass lens that slides over a segmented control or tab bar, refraction inside the lens, rim light and rainbow edges, glass surfaces that materialize on entry, first paint without a theme flash, and form errors that match the glass style.
+description: Apple's approach to interface design and fluid, physical motion, translated for the web, plus hands-on rules for iOS 26 Liquid Glass. Use when building or reviewing gesture-driven UI, spring animations, drag/swipe/sheet interactions, momentum and interruptible transitions, translucent materials and depth, typography (optical sizing, tracking, leading), reduced-motion, or the design foundations (feedback, spatial consistency, restraint) behind Apple-style interfaces. Also use for Liquid Glass on the web: glass buttons that inflate and stretch toward the finger, a glass lens that slides over a segmented control or tab bar, refraction inside the lens, rim light and rainbow edges, glass surfaces that materialize on entry, first paint without a theme flash, form errors that match the glass style, iOS 26 switches (toggles) at their real size, Settings-style grouped lists, and menus/dropdowns as they look when open.
 ---
 
 # Apple Design + Liquid Glass
@@ -310,6 +310,14 @@ There are two kinds of glass, and they behave differently:
 - **Replace the browser's validation bubble** with an inline message under the field, in the glass style: an error border, a soft ring, a tiny shake, and focus on the first invalid field. Keep the native validation underneath.
 - **On touch there is no hover.** Anything that only appears on hover (the glass capsule of a text button) must also appear on press.
 
+**Switches, lists and menus** (measured on iPhone screenshots; details in LIQUID-GLASS.md §10–12)
+- **The iOS 26 switch is 63 × 28pt with a 37 × 24pt pill thumb, inset 2pt, travel 22pt.** Not the old 51 × 31 with a round thumb that fills the track: that looks chubby and short. Derive every size from the height (`width = 2.25·h`, `thumb = 1.32·h`, `inset = h/14`).
+- **Colors:** on `#34C759` / `#30D158` (dark), off ≈ `#E9E9EA` / `#5A595F` (dark), white thumb. The track color mixes by thumb position. No "On/Off" text, no I/O marks.
+- **The pressed thumb is a small lens:** it lifts at once, grows past the track (+30% / +34%), turns clear and gets the rim light; it follows a drag, stretches with velocity, and settles on the nearer side. The `<input type="checkbox" role="switch">` stays the real control, and the value changes only through a native click.
+- **One size, a 44pt hit area, applies immediately.** Never shrink it in dense rows; the row grows instead. No Save button after a switch. The label names the setting, and the footer explains the consequence.
+- **Settings-style lists:** black screen, `#1C1C1E` cards 20pt from the edges, ≈52pt rows, a single-row group is a capsule with continuous corners, 17pt label 20pt in, 13pt footer ≈8pt under the card aligned with the label, ≈24pt to the next group.
+- **An open menu** is one large blurred glass panel (radius ≈30pt) that grows out of its control, with 44pt rows, 17pt text, no separators, a leading checkmark as the only sign of the selection, labels aligned whether checked or not, and the last row cut by the edge when it scrolls. On iOS keep the native `<select>`: Safari already draws this.
+
 ## Quick Reference
 
 | Need | Technique | Concrete value |
@@ -337,3 +345,7 @@ There are two kinds of glass, and they behave differently:
 | Lens refraction | Bijective radial map, vector paths | `u·(0.82 + 0.18·u⁴)` |
 | Rainbow | Rim ring only, two corners | 1px conic ring, opacity `≈0.45` |
 | Glass entrance | Materialize, then stagger content | blur `0→40px` `750ms`, children `+60ms` |
+| Switch (iOS 26) | Long capsule track, pill thumb | track `63×28pt`, thumb `37×24pt`, inset `2pt`, travel `22pt` |
+| Switch hit area | Invisible `::before` around the track | `≥44pt` tall |
+| Grouped list row | Capsule card, label + trailing accessory | `52pt` row, `20pt` margins, footer `13pt` |
+| Open menu | Blurred glass panel from its control | radius `≈30pt`, rows `44pt`, checkmark column `≈47pt` |

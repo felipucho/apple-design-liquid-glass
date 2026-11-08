@@ -226,7 +226,187 @@ The browser's "Please fill out this field" bubble breaks the illusion. Replace h
 - Clear the message on `input` as soon as the field is valid. While it is still invalid, update the text.
 - Write messages for people: "Please fill this in", "That email doesn't look right", "Use at least 8 characters". A `pattern` field brings its own text (for example "Enter the 6 digits of the code").
 
-## 10. Verify by measuring, not by eyeballing
+## 10. Switches (toggles)
+
+Measured on an iPhone screenshot of Settings › Accessibility › Touch in dark mode (858px wide for a 430pt screen, so ≈2px per point). JPEG antialiasing eats about 1px on each edge, so the raw numbers come out a hair small.
+
+### Size: the iOS 26 switch is lower and longer than the old one
+
+| Part | iOS 26 | Measured | Pre-iOS 26 (don't copy it) |
+| --- | --- | --- | --- |
+| Track | **63 × 28pt**, capsule (2.25 : 1) | 123 × 54px ≈ 61.5 × 27pt | 51 × 31pt (1.65 : 1) |
+| Thumb | **37 × 24pt**, a pill wider than tall (1.54 : 1) | 70 × 45px + edges ≈ 37 × 24pt | 27 × 27pt, a circle |
+| Inset (track around the thumb) | **2pt** on every side | 4–5px | 2pt |
+| Travel | 63 − 2·2 − 37 = **22pt** | thumb starts at 665px off, 709px on: 44px ≈ 22pt | 20pt |
+
+Mistake that taught this: a switch built from the old proportions, `width = 1.75 × height`, a thumb `1.1 × height` wide that filled the track's whole height, at 56 × 32px. Next to iOS 26 it looked chubby and short: too tall, too narrow, and a round-ish thumb with almost no track visible around it. The iOS 26 switch shows a thin, even ring of track around a clearly elongated pill.
+
+### Colors
+
+| | Light | Dark |
+| --- | --- | --- |
+| Track, on | `#34C759` | `#30D158` (measured ≈ `#2DD25A`) |
+| Track, off | `#E9E9EA` (not re-measured here) | measured ≈ `#5A595F` on a `#1C1C1E` card |
+| Thumb | `#FFFFFF`, a small soft shadow | `#FFFFFF`, no visible shadow |
+
+- The track color follows the thumb's position (`color-mix` by position), so mid-drag it is in between. It does not flip at the end.
+- No text or glyphs: no "On"/"Off" next to it and no I/O marks inside it. The row label says what it controls.
+
+### Recipe: one number drives everything
+
+```css
+@property --sw-pos  { syntax: '<number>'; inherits: true; initial-value: 0; } /* 0 off → 1 on */
+@property --sw-lift { syntax: '<number>'; inherits: true; initial-value: 0; } /* 0 resting → 1 held */
+
+input[type='checkbox'][role='switch'] {
+  --sw-h: 28px;                              /* everything else is derived from this */
+  --sw-w: calc(var(--sw-h) * 2.25);          /* 63 */
+  --sw-inset: calc(var(--sw-h) / 14);        /* 2 */
+  --sw-thumb-w: calc(var(--sw-h) * 1.3214);  /* 37 */
+  --sw-travel: calc(var(--sw-w) - var(--sw-inset) * 2 - var(--sw-thumb-w)); /* 22 */
+  appearance: none;
+  position: relative;
+  flex: none;
+  inline-size: var(--sw-w);
+  block-size: var(--sw-h);
+  margin: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sw-on) calc(var(--sw-pos) * 100%), var(--sw-off));
+  touch-action: pan-y pinch-zoom;            /* sideways drags move the thumb, vertical ones scroll */
+  transition: --sw-pos 450ms cubic-bezier(.34, 1.4, .64, 1), --sw-lift 200ms ease-out;
+}
+input[role='switch']:checked { --sw-pos: 1; }
+input[role='switch']:active  { --sw-lift: 1; }
+
+/* The track is only 28pt tall: extend the hit area to 44pt without changing the look. */
+input[role='switch']::before { content: ''; position: absolute; inset: -8px -4px; }
+
+input[role='switch']::after {                /* the thumb */
+  content: '';
+  position: absolute;
+  inset-block-start: var(--sw-inset);
+  inset-inline-start: var(--sw-inset);
+  inline-size: var(--sw-thumb-w);
+  block-size: calc(var(--sw-h) - var(--sw-inset) * 2);   /* 24 */
+  border-radius: 999px;
+  background: rgb(255 255 255 / max(.04, calc(1 - var(--sw-lift) * .96)));
+  box-shadow:
+    0 2px 4px rgb(0 0 0 / calc(.22 * (1 - var(--sw-lift) * .5))),
+    inset 0 1.5px 1px rgb(255 255 255 / calc(var(--sw-lift) * .85)),   /* rim light, only when lifted */
+    inset 0 -1.5px 1px rgb(255 255 255 / calc(var(--sw-lift) * .5)),
+    0 6px 16px -6px rgb(0 0 0 / calc(var(--sw-lift) * .35));
+  translate: calc(var(--sw-pos) * var(--sw-travel)) 0;
+  scale: calc(1 + var(--sw-lift) * .3) calc(1 + var(--sw-lift) * .34);
+  pointer-events: none;
+}
+```
+
+The JS that drives the thumb by hand (see Motion) reads the travel from CSS, so there is one source for it. Register it as a length, or `getComputedStyle` returns the unresolved `calc(…)` text instead of pixels:
+
+```css
+@property --sw-travel { syntax: '<length>'; inherits: true; initial-value: 0px; }
+```
+```js
+const travel = parseFloat(getComputedStyle(input).getPropertyValue('--sw-travel')) // 22
+```
+
+### Motion: the thumb is a small lens
+
+The pressed thumb behaves like the lens in section 3, with the same springs, rim light and rainbow ring:
+
+- **Press:** it lifts at once, with no threshold. It grows past the track (≈+30% wide, +34% tall) and turns clear glass: its white fill goes to ~4%, it gets the rim light and a soft shadow, and `backdrop-filter: saturate(160%) brightness(1.04)` (no blur), so the track color shows through it.
+- **Drag:** past a 4px threshold, it follows the finger with the held spring. It stretches with velocity (`sx = 1 + min(|v| / 1500, 0.35)`, `sy = 1 − 0.4·that`) and rubber-bands 8px past each end.
+- **Release after a drag:** it settles on the nearer side (spring `k 300, c 22`). The value changes only if it ended on the other side. Swallow the native `click` that follows the drag, or it toggles twice.
+- **Tap:** the native click toggles the input, and the thumb travels to the other side by itself, lifting on the way like the lens does.
+- **Keyboard and label clicks:** the CSS transition above (450ms with a slight overshoot). While JS is driving it, set a `data-live` attribute that turns the transition off, so the two don't fight.
+- **The `<input>` stays the real control.** The value only ever changes through a native click, so `change` events, forms, the keyboard and screen readers work unchanged.
+- **Reduced motion:** no lift and no stretch. Slide it, or just switch.
+
+### Rules
+
+- **One size.** iOS doesn't shrink a switch in dense rows or tables. If the row is too short, the row grows, not the switch.
+- **Hit area ≥44pt** (the `::before` above), or make the whole row its `<label>`.
+- **Placement:** at the trailing edge of the row, vertically centered, ≈18pt from the card's edge. The label sits at the leading edge, 20pt in (see section 11).
+- **It applies immediately.** No Save button after a switch. If a change needs confirmation or can't be undone, it isn't a switch: use a button.
+- **The label names the setting** ("Vibration"), not an action ("Turn on vibration"). The consequence goes in the footer under the row.
+- **Semantics:** `<input type="checkbox" role="switch">`. Screen readers announce "switch, on". Space toggles it. Keep a visible `:focus-visible` ring (3px, offset 2px).
+- **Disabled:** dim the whole control and keep its state visible. Don't hide it.
+- **Increased contrast:** outline the track (`inset 0 0 0 1.5px` in the secondary text color). **Forced colors:** `ButtonFace` / `Highlight` for the track and `ButtonText` / `HighlightText` for the thumb, with no shadow.
+
+## 11. Settings-style grouped lists
+
+Measured on the same screenshot.
+
+| Part | iOS 26 |
+| --- | --- |
+| Screen background (dark) | `#000000` |
+| Card (dark) | `#1C1C1E` (measured exactly) |
+| Card margin from the screen edges | 20pt |
+| Row height | ≈52pt (measured 102px ≈ 51pt) |
+| A group with a single row | a **capsule**: radius = half its height |
+| Row label | 17pt regular, primary label color, 20pt from the card's leading edge |
+| Switch | trailing, ≈18pt from the card's edge |
+| Value + chevron (a row that navigates) | value in the secondary label color (≈ `#9A999E` in dark), then a chevron ≈5 × 10pt, ≈20pt from the edge |
+| Footer | 13pt, secondary label color, starting ≈8pt under the card, its leading edge aligned with the row label |
+| Links in a footer | accent color, each on its own line, ending in "…" |
+| Next group | ≈24pt after the footer |
+
+- **The corners are continuous (a squircle), not circular arcs.** The curve starts farther from the end than a semicircle would: the top edge only reaches full width ≈33pt in, where a circle of radius 25.5pt would reach it at 25.5pt. On the web, `border-radius: 999px` is close enough. Add `corner-shape: squircle` as a progressive enhancement where it is supported.
+- **The footer explains the consequence** of the setting ("If you turn this off, your iPhone won't vibrate…"). The row label stays short.
+- **No separators** inside a single-row group. Each setting with its footer is its own group.
+- Rows that navigate highlight on press; they don't stretch (section 2).
+
+## 12. Menus: what something looks like when it opens
+
+Observed on an iPhone screenshot of a native `<select>` opened in Safari, dark mode. The screenshot wasn't kept as a file, so the values are proportions of the row height (44pt), not pixel measurements.
+
+| Part | iOS 26 |
+| --- | --- |
+| Shape | one large rounded panel with continuous corners, radius ≈30pt |
+| Width | ≈270pt, about 6 row heights. Wider than the control, it doesn't stretch to the screen |
+| Material | dark translucent glass with a strong blur. The page behind shows through as soft smears of color, never as readable text |
+| Edge | a faint lighter rim, brightest at the top (the glass rim light), and a wide, soft shadow |
+| Rows | 44pt, 17pt regular, primary label color, **no separators and no row backgrounds** |
+| Selected option | a **checkmark** in a leading column (≈23pt from the edge). The text stays white: no tint and no highlighted row |
+| Text inset | ≈47pt from the leading edge on every row, whether or not it has the checkmark, so the labels line up |
+| Long lists | it scrolls inside the panel. The last visible row is cut by the panel's edge, which tells you there is more |
+| The page behind | not dimmed. The menu floats over it |
+
+Rules:
+
+- **A menu opens out of the control that opened it.** In iOS 26 the glass grows from the button or field into the panel and shrinks back into it on close. It doesn't drop down from nowhere, and it doesn't slide up as a sheet for a short list.
+- **The checkmark is the only sign of the selection.** Don't color the selected row or its text.
+- **Don't add separators, icons or descriptions** to plain option lists. Each row is just its text.
+- **Cap the height** to the screen with a margin (`max-height: calc(100dvh - 2 * margin)`), scroll inside it (`overscroll-behavior: contain`), and let the last row be cut so the scroll is obvious.
+- **Close on a tap outside**, on Escape, and as soon as an option is picked, and move the focus back to the control.
+- **On iOS, keep the native `<select>`.** Safari already draws this menu, with the right material, scrolling and accessibility. A custom dropdown on a phone is a step backwards. For desktop, use a customizable select (`appearance: base-select`) or a `popover` anchored to the control, styled with these values.
+
+Recipe for a custom one (desktop or non-`<select>` menus):
+
+```css
+.menu {                                           /* a popover anchored to its control */
+  inline-size: max(17rem, anchor-size(width));    /* anchor-size() only works when anchored */
+  max-block-size: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: 8px;
+  border-radius: 30px;
+  corner-shape: squircle;                         /* where supported */
+  background: rgb(44 44 48 / .72);                /* dark; estimated, not measured */
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: var(--glass-rim), 0 12px 40px rgb(0 0 0 / .35);
+}
+.menu [role='option'] {
+  display: grid;
+  grid-template-columns: 47px 1fr;                /* checkmark column, then text */
+  align-items: center;
+  min-block-size: 44px;
+  font-size: 17px;
+}
+.menu [role='option'][aria-selected='true']::before { content: '✓'; justify-self: center; }
+```
+
+## 13. Verify by measuring, not by eyeballing
 
 Glass bugs are subtle, and a screenshot hides most of them. Measure instead:
 
@@ -234,3 +414,5 @@ Glass bugs are subtle, and a screenshot hides most of them. Measure instead:
 - **Refraction:** count icon pixels inside the lens with the effect on and off, at three spots: on an option, between two options, and at the end. Between options, a count that is much lower means a gap. One that is higher than "off" means duplication.
 - **Tap travel:** sample `translate` and `scale` every ~60ms and check the peak (≈1.5 × 1.14), the time it shows the lens look (~250ms) and the time it is fully still (~700ms).
 - **Entrance and first paint:** sample computed `opacity`, `transform` and `backdrop-filter` every 100ms after load. Block the app bundle and check that the first paint already has the right theme and no text.
+- **Sizes from a real screenshot:** convert pixels to points first (screenshot width ÷ the device's width in points; an iPhone at 430pt saved at 858px is ≈2px/pt), then measure the colored area of each part by thresholding its pixels. Allow ~1px of antialiasing per edge. That is how the switch's 63 × 28 track and 37 × 24 thumb were confirmed, and how the old 56 × 32 version was caught.
+- **Switch:** check its rendered box is 63 × 28 (with a 44px hit area), the thumb 37 × 24 with a 2px inset, and that `--sw-travel` is 22. Tap, drag and release on each side and confirm the value changes exactly once.
